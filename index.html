@@ -5,9 +5,35 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>Sonic Platform Runner</title>
   <style>
-    * { box-sizing: border-box; touch-action: none; -webkit-user-select: none; user-select: none; }
-    body { background: #0f1423; color: white; font-family: sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100vh; margin: 0; padding: 10px; overflow: hidden; position: relative; }
-    canvas { border: 3px solid #2c3e50; border-radius: 8px; background: #1a1a2e; box-shadow: 0 10px 25px rgba(0,0,0,0.5); max-width: 100%; height: auto; }
+    * { 
+      box-sizing: border-box; 
+      touch-action: none; 
+      -webkit-user-select: none; 
+      user-select: none; 
+      -webkit-touch-callout: none;
+    }
+    body { 
+      background: #0f1423; 
+      color: white; 
+      font-family: sans-serif; 
+      display: flex; 
+      flex-direction: column; 
+      align-items: center; 
+      justify-content: center; 
+      min-height: 100vh; 
+      margin: 0; 
+      padding: 10px; 
+      overflow: hidden; 
+      position: relative; 
+    }
+    canvas { 
+      border: 3px solid #2c3e50; 
+      border-radius: 8px; 
+      background: #1a1a2e; 
+      box-shadow: 0 10px 25px rgba(0,0,0,0.5); 
+      max-width: 100%; 
+      height: auto; 
+    }
     .controls { display: flex; justify-content: space-between; width: 100%; max-width: 800px; margin-top: 15px; }
     .btn { width: 70px; height: 70px; background: rgba(255, 255, 255, 0.2); border: 2px solid rgba(255, 255, 255, 0.8); border-radius: 50%; color: white; font-size: 26px; font-weight: bold; display: flex; align-items: center; justify-content: center; cursor: pointer; }
     .btn:active { background: rgba(255, 255, 255, 0.5); }
@@ -63,17 +89,10 @@ const startOverlay = document.getElementById('startOverlay');
 const startButton = document.getElementById('startButton');
 
 // --- CHARGEMENT DES IMAGES ---
-const sonicIdle = new Image();
-sonicIdle.src = 'Sonic.png';
-
-const sonicRun = new Image();
-sonicRun.src = 'Sonic Run.png';
-
-const sonicJump = new Image();
-sonicJump.src = 'Sonic-jump.png';
-
-const ringSprite = new Image();
-ringSprite.src = 'ring.gif';
+const sonicIdle = new Image(); sonicIdle.src = 'Sonic.png';
+const sonicRun = new Image(); sonicRun.src = 'Sonic Run.png';
+const sonicJump = new Image(); sonicJump.src = 'Sonic-jump.png';
+const ringSprite = new Image(); ringSprite.src = 'ring.gif';
 
 // --- SYSTÈME BRUITAGES 8-BIT ---
 let audioCtx = null;
@@ -84,9 +103,7 @@ function initAudio() {
     const AudioContextClass = window.AudioContext || window.webkitAudioContext;
     if (AudioContextClass) audioCtx = new AudioContextClass();
   }
-  if (audioCtx && audioCtx.state === 'suspended') {
-    audioCtx.resume();
-  }
+  if (audioCtx && audioCtx.state === 'suspended') audioCtx.resume();
 }
 
 function playSound(type) {
@@ -95,67 +112,33 @@ function playSound(type) {
 
   try {
     const now = audioCtx.currentTime;
-    
     if (type === 'ring') {
-      const osc1 = audioCtx.createOscillator();
-      const osc2 = audioCtx.createOscillator();
-      const gain = audioCtx.createGain();
-      
-      osc1.type = 'sine';
-      osc2.type = 'sine';
+      const osc1 = audioCtx.createOscillator(), osc2 = audioCtx.createOscillator(), gain = audioCtx.createGain();
+      osc1.type = 'sine'; osc2.type = 'sine';
       osc1.frequency.setValueAtTime(987.77, now);
       osc2.frequency.setValueAtTime(1318.51, now + 0.08);
-      
       gain.gain.setValueAtTime(0.15, now);
       gain.gain.exponentialRampToValueAtTime(0.01, now + 0.25);
-      
-      osc1.connect(gain);
-      osc2.connect(gain);
-      gain.connect(audioCtx.destination);
-      
-      osc1.start(now);
-      osc1.stop(now + 0.08);
-      osc2.start(now + 0.08);
-      osc2.stop(now + 0.25);
-
+      osc1.connect(gain); osc2.connect(gain); gain.connect(audioCtx.destination);
+      osc1.start(now); osc1.stop(now + 0.08); osc2.start(now + 0.08); osc2.stop(now + 0.25);
     } else if (type === 'jump') {
-      const osc = audioCtx.createOscillator();
-      const gain = audioCtx.createGain();
-      
-      osc.type = 'square';
-      osc.frequency.setValueAtTime(150, now);
+      const osc = audioCtx.createOscillator(), gain = audioCtx.createGain();
+      osc.type = 'square'; osc.frequency.setValueAtTime(150, now);
       osc.frequency.exponentialRampToValueAtTime(600, now + 0.15);
-      
-      gain.gain.setValueAtTime(0.1, now);
-      gain.gain.exponentialRampToValueAtTime(0.01, now + 0.15);
-      
-      osc.connect(gain);
-      gain.connect(audioCtx.destination);
-      
-      osc.start(now);
-      osc.stop(now + 0.15);
-
+      gain.gain.setValueAtTime(0.1, now); gain.gain.exponentialRampToValueAtTime(0.01, now + 0.15);
+      osc.connect(gain); gain.connect(audioCtx.destination);
+      osc.start(now); osc.stop(now + 0.15);
     } else if (type === 'fall') {
-      const osc = audioCtx.createOscillator();
-      const gain = audioCtx.createGain();
-      
-      osc.type = 'sawtooth';
-      osc.frequency.setValueAtTime(400, now);
+      const osc = audioCtx.createOscillator(), gain = audioCtx.createGain();
+      osc.type = 'sawtooth'; osc.frequency.setValueAtTime(400, now);
       osc.frequency.exponentialRampToValueAtTime(50, now + 0.4);
-      
-      gain.gain.setValueAtTime(0.2, now);
-      gain.gain.exponentialRampToValueAtTime(0.01, now + 0.4);
-      
-      osc.connect(gain);
-      gain.connect(audioCtx.destination);
-      
-      osc.start(now);
-      osc.stop(now + 0.4);
+      gain.gain.setValueAtTime(0.2, now); gain.gain.exponentialRampToValueAtTime(0.01, now + 0.4);
+      osc.connect(gain); gain.connect(audioCtx.destination);
+      osc.start(now); osc.stop(now + 0.4);
     }
   } catch (e) {}
 }
 
-// --- DÉMARRAGE DU JEU ---
 function startGame() {
   initAudio();
   if (!gameStarted) {
@@ -168,12 +151,12 @@ function startGame() {
 startButton.onclick = startGame;
 startButton.ontouchstart = startGame;
 
-// --- CONSTANTES ET ÉTAT DU JEU ---
-const ACCEL = 0.4;
+// --- CONSTANTES DE PHYSIQUE (AJUSTÉES AVEC TEMPS MULTIPLIER) ---
+const ACCEL = 1.2;
 const FRICTION = 0.82;
-const TOP_SPEED = 5;
-const GRAVITY = 0.5;
-const JUMP_FORCE = -13.5;
+const TOP_SPEED = 9;
+const GRAVITY = 0.8;
+const JUMP_FORCE = -16;
 
 const player = {
   x: 100, y: 200,
@@ -194,7 +177,6 @@ let nextPlatformX = 700;
 let cameraX = 0;
 const inputs = { left: false, right: false };
 
-// --- COMMANDES ---
 function handleJump() {
   startGame();
   if (player.isGrounded) { 
@@ -228,7 +210,6 @@ setupButton('btnLeft', () => inputs.left = true, () => inputs.left = false);
 setupButton('btnRight', () => inputs.right = true, () => inputs.right = false);
 setupButton('btnJump', () => handleJump(), null);
 
-// --- GENERATION DU MONDE ET PHYSIQUE ---
 function generatePlatforms() {
   while (nextPlatformX < player.x + canvas.width + 300) {
     const sectionType = Math.floor(Math.random() * 3);
@@ -270,20 +251,32 @@ function respawnPlayer() {
   generatePlatforms();
 }
 
+// --- MISE À JOUR ADAPTATIVE EN TEMPS RÉEL (DELTA TIME) ---
+let lastTime = performance.now();
+
 function update() {
   if (!gameStarted) return;
 
-  if (inputs.right) { player.vx = Math.min(player.vx + ACCEL, TOP_SPEED); player.facingRight = true; }
-  else if (inputs.left) { player.vx = Math.max(player.vx - ACCEL, -TOP_SPEED); player.facingRight = false; }
-  else { player.vx *= FRICTION; }
+  const now = performance.now();
+  // Calcul du temps écoulé (normalisé sur 60 FPS = 1.0)
+  let dt = (now - lastTime) / (1000 / 60);
+  lastTime = now;
+  if (dt > 3) dt = 1; // Sécurité si le téléphone freeze un court instant
 
-  player.vy += GRAVITY; player.x += player.vx; player.y += player.vy;
+  if (inputs.right) { player.vx = Math.min(player.vx + ACCEL * dt, TOP_SPEED); player.facingRight = true; }
+  else if (inputs.left) { player.vx = Math.max(player.vx - ACCEL * dt, -TOP_SPEED); player.facingRight = false; }
+  else { player.vx *= Math.pow(FRICTION, dt); }
+
+  player.vy += GRAVITY * dt; 
+  player.x += player.vx * dt; 
+  player.y += player.vy * dt;
+  
   if (player.x < cameraX) { player.x = cameraX; player.vx = 0; }
 
   player.isGrounded = false;
   for (let plat of platforms) { 
     if (checkCollision(player, plat)) { 
-      if (player.vy > 0 && (player.y + player.height - player.vy) <= plat.y + 8) { 
+      if (player.vy > 0 && (player.y + player.height - player.vy * dt) <= plat.y + 12) { 
         player.y = plat.y - player.height; player.vy = 0; player.isGrounded = true; 
       } 
     } 
@@ -301,15 +294,14 @@ function update() {
   
   if (player.y > canvas.height + 100) { playSound('fall'); respawnPlayer(); }
 
-  ringAnimAngle += 0.1; generatePlatforms();
-  cameraX = Math.max(0, player.x - 200); distElement.textContent = Math.floor(player.x / 10);
+  ringAnimAngle += 0.1 * dt; 
+  generatePlatforms();
+  cameraX = Math.max(0, player.x - 200); 
+  distElement.textContent = Math.floor(player.x / 10);
 }
 
-// --- AFFICHAGE DE SONIC (SANS DÉCOUPAGE) ---
 function drawPlayer() {
   ctx.save();
-  
-  // Inversion de l'image si Sonic regarde à gauche
   if (!player.facingRight) {
     ctx.translate(player.x + player.width, player.y);
     ctx.scale(-1, 1);
@@ -318,21 +310,18 @@ function drawPlayer() {
   }
 
   if (!player.isGrounded) {
-    // STATE: SAUT
     if (sonicJump.complete && sonicJump.naturalWidth !== 0) {
       ctx.drawImage(sonicJump, 0, 0, player.width, player.height);
     } else {
       ctx.drawImage(sonicIdle, 0, 0, player.width, player.height);
     }
   } else if (Math.abs(player.vx) > 0.3) {
-    // STATE: COURSE (Affiche directement le PNG Sonic Run complet)
     if (sonicRun.complete && sonicRun.naturalWidth !== 0) {
       ctx.drawImage(sonicRun, 0, 0, player.width, player.height);
     } else {
       ctx.drawImage(sonicIdle, 0, 0, player.width, player.height);
     }
   } else {
-    // STATE: IMMOBILE
     if (sonicIdle.complete && sonicIdle.naturalWidth !== 0) {
       ctx.drawImage(sonicIdle, 0, 0, player.width, player.height);
     } else {
