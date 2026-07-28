@@ -2,7 +2,7 @@
 <html lang="fr">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
   <title>Sonic Platform Runner</title>
   <style>
     * { 
@@ -22,38 +22,93 @@
       justify-content: center; 
       min-height: 100vh; 
       margin: 0; 
-      padding: 10px; 
+      padding: 0; 
       overflow: hidden; 
       position: relative; 
     }
+
+    #gameContainer {
+      position: relative;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      width: 100%;
+      height: 100vh;
+    }
+
     canvas { 
       border: 3px solid #2c3e50; 
       border-radius: 8px; 
       background: #1a1a2e; 
       box-shadow: 0 10px 25px rgba(0,0,0,0.5); 
       max-width: 100%; 
-      height: auto; 
+      max-height: 100%;
+      object-fit: contain;
     }
-    .controls { display: flex; justify-content: space-between; width: 100%; max-width: 800px; margin-top: 15px; }
-    .btn { width: 70px; height: 70px; background: rgba(255, 255, 255, 0.2); border: 2px solid rgba(255, 255, 255, 0.8); border-radius: 50%; color: white; font-size: 26px; font-weight: bold; display: flex; align-items: center; justify-content: center; cursor: pointer; }
-    .btn:active { background: rgba(255, 255, 255, 0.5); }
-    .btn-jump { width: 85px; height: 85px; background: rgba(231, 76, 60, 0.7); border-color: #e74c3c; }
-    #scoreBoard { font-size: 18px; font-weight: bold; margin-bottom: 10px; display: flex; gap: 20px; background: rgba(0,0,0,0.4); padding: 8px 16px; border-radius: 20px; }
+
+    /* Score Board Overlay */
+    #scoreBoard { 
+      position: absolute;
+      top: 15px;
+      font-size: 18px; 
+      font-weight: bold; 
+      display: flex; 
+      gap: 30px; 
+      background: rgba(0,0,0,0.6); 
+      padding: 8px 20px; 
+      border-radius: 20px; 
+      z-index: 10;
+      backdrop-filter: blur(4px);
+    }
     .ring-count { color: #f1c40f; }
+
+    /* Contrôles tactiles */
+    .controls { 
+      position: absolute;
+      bottom: 20px;
+      left: 0;
+      width: 100%; 
+      padding: 0 25px;
+      display: flex; 
+      justify-content: space-between; 
+      align-items: flex-end;
+      z-index: 20;
+      pointer-events: none; /* Laisse passer les clics autour des boutons */
+    }
+    .controls .btn { pointer-events: auto; }
+
+    .btn { 
+      width: 65px; 
+      height: 65px; 
+      background: rgba(255, 255, 255, 0.25); 
+      border: 2px solid rgba(255, 255, 255, 0.8); 
+      border-radius: 50%; 
+      color: white; 
+      font-size: 26px; 
+      font-weight: bold; 
+      display: flex; 
+      align-items: center; 
+      justify-content: center; 
+      cursor: pointer; 
+      backdrop-filter: blur(3px);
+    }
+    .btn:active { background: rgba(255, 255, 255, 0.5); }
+    .btn-jump { width: 80px; height: 80px; background: rgba(231, 76, 60, 0.75); border-color: #e74c3c; }
 
     /* Overlay Menu & Game Over */
     #startOverlay {
       position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
       background: rgba(15, 20, 35, 0.95);
       display: flex; flex-direction: column; justify-content: center; align-items: center;
-      z-index: 999; gap: 15px;
+      z-index: 999; gap: 12px;
     }
     .main-title { margin: 0; color: #f1c40f; font-size: 32px; text-transform: uppercase; }
     .game-over-text { color: #e74c3c; font-size: 18px; margin: -5px 0 5px 0; font-weight: bold; }
     .last-score-badge { background: rgba(255, 255, 255, 0.15); padding: 6px 16px; border-radius: 15px; font-size: 16px; }
 
     #startButton {
-      padding: 15px 40px; font-size: 22px; font-weight: bold; color: white;
+      padding: 12px 35px; font-size: 20px; font-weight: bold; color: white;
       background: #e74c3c; border: none; border-radius: 30px; cursor: pointer;
       box-shadow: 0 4px 15px rgba(231, 76, 60, 0.5);
       transition: transform 0.1s ease;
@@ -65,16 +120,65 @@
       background: rgba(255, 255, 255, 0.1);
       border: 1px solid rgba(255, 255, 255, 0.2);
       border-radius: 12px;
-      padding: 15px 25px;
-      width: 320px;
-      max-height: 250px;
+      padding: 10px 20px;
+      width: 300px;
+      max-height: 180px;
       overflow-y: auto;
       text-align: center;
     }
-    .leaderboard-box h3 { margin: 0 0 10px 0; color: #f1c40f; }
-    .leaderboard-list { list-style: none; padding: 0; margin: 0; font-size: 14px; text-align: left; }
-    .leaderboard-list li { display: flex; justify-content: space-between; padding: 4px 0; border-bottom: 1px solid rgba(255,255,255,0.1); }
+    .leaderboard-box h3 { margin: 0 0 8px 0; color: #f1c40f; font-size: 16px; }
+    .leaderboard-list { list-style: none; padding: 0; margin: 0; font-size: 13px; text-align: left; }
+    .leaderboard-list li { display: flex; justify-content: space-between; padding: 3px 0; border-bottom: 1px solid rgba(255,255,255,0.1); }
     .leaderboard-list li span.rank { color: #e74c3c; font-weight: bold; width: 25px; }
+
+    /* Avertissement pour tourner l'écran en portrait */
+    #rotateWarning {
+      display: none;
+      position: fixed;
+      top: 0; left: 0; width: 100vw; height: 100vh;
+      background: #0f1423;
+      z-index: 9999;
+      color: #f1c40f;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      text-align: center;
+      padding: 20px;
+      font-size: 20px;
+      font-weight: bold;
+    }
+
+    @media (orientation: portrait) and (max-width: 768px) {
+      #rotateWarning { display: flex; }
+    }
+
+    /* Adaptations Paysage Smartphone */
+    @media (max-height: 500px) {
+      canvas {
+        border: none;
+        border-radius: 0;
+        width: 100vw;
+        height: 100vh;
+      }
+      #scoreBoard {
+        top: 8px;
+        padding: 4px 15px;
+        font-size: 14px;
+      }
+      .controls {
+        bottom: 12px;
+        padding: 0 15px;
+      }
+      .btn {
+        width: 55px;
+        height: 55px;
+        font-size: 22px;
+      }
+      .btn-jump {
+        width: 70px;
+        height: 70px;
+      }
+    }
   </style>
 
   <!-- SDKs FIREBASE -->
@@ -82,6 +186,12 @@
   <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
 </head>
 <body>
+
+  <!-- MESSAGE ROTATION -->
+  <div id="rotateWarning">
+    <div style="font-size: 50px; margin-bottom: 15px;">🔄</div>
+    Tourne ton téléphone en mode paysage pour jouer !
+  </div>
 
   <!-- ÉCRAN D'ACCUEIL / GAME OVER -->
   <div id="startOverlay">
@@ -99,20 +209,22 @@
     <button id="startButton">JOUER 🔊</button>
   </div>
 
-  <div id="scoreBoard">
-    <div>Distance : <span id="dist">0</span>m</div>
-    <div class="ring-count">Rings : <span id="ringDist">0</span></div>
-    <div>CP : <span id="cpDist">0</span>m</div>
-  </div>
-  <canvas id="gameCanvas" width="800" height="400"></canvas>
-
-  <div class="controls">
-    <div class="d-pad" style="display:flex; gap:15px;">
-      <div class="btn" id="btnLeft">◄</div>
-      <div class="btn" id="btnRight">►</div>
+  <div id="gameContainer">
+    <div id="scoreBoard">
+      <div>Distance : <span id="dist">0</span>m</div>
+      <div class="ring-count">Rings : <span id="ringDist">0</span></div>
     </div>
-    <div class="action-pad">
-      <div class="btn btn-jump" id="btnJump">▲</div>
+    
+    <canvas id="gameCanvas" width="800" height="400"></canvas>
+
+    <div class="controls">
+      <div class="d-pad" style="display:flex; gap:15px;">
+        <div class="btn" id="btnLeft">◄</div>
+        <div class="btn" id="btnRight">►</div>
+      </div>
+      <div class="action-pad">
+        <div class="btn btn-jump" id="btnJump">▲</div>
+      </div>
     </div>
   </div>
 
@@ -134,7 +246,6 @@ const db = firebase.database();
 const leaderboardList = document.getElementById('leaderboardList');
 let playerName = localStorage.getItem('sonic_player_name') || '';
 
-// ÉCOUTER LE TOP 10 EN TEMPS RÉEL
 function listenToHighScores() {
   db.ref('scores').orderByChild('score').limitToLast(10).on('value', (snapshot) => {
     const scores = [];
@@ -161,7 +272,6 @@ function listenToHighScores() {
   });
 }
 
-// ENVOYER UN NOUVEAU SCORE
 function submitScore(score) {
   if (score < 10) return;
 
@@ -188,7 +298,6 @@ listenToHighScores();
 const canvas = document.getElementById('gameCanvas');
 const ctx = canvas.getContext('2d');
 const distElement = document.getElementById('dist');
-const cpDistElement = document.getElementById('cpDist');
 const ringDistElement = document.getElementById('ringDist');
 
 const startOverlay = document.getElementById('startOverlay');
@@ -198,11 +307,23 @@ const gameOverMsg = document.getElementById('gameOverMsg');
 const lastScoreBox = document.getElementById('lastScoreBox');
 const finalScoreVal = document.getElementById('finalScoreVal');
 
-// --- CHARGEMENT DES SPRITES (NOMS 100% IDENTIQUES AUX FICHIERS LINUX) ---
+// --- CHARGEMENT DES SPRITES ET DÉCORS ---
 const sonicIdle = new Image(); sonicIdle.src = 'sonic.png';
 const sonicRun = new Image(); sonicRun.src = 'Sonic Run.png';
 const sonicJump = new Image(); sonicJump.src = 'sonic-jump.png';
-const ringSprite = new Image(); ringSprite.src = 'ring.png';
+const superSonicImg = new Image(); superSonicImg.src = 'supersonic.png';
+const ringSprite = new Image(); ringSprite.src = 'ring.gif';
+const foeSprite = new Image(); foeSprite.src = 'Foe.png';
+
+const greenhillImg = new Image(); greenhillImg.src = 'greenhill.png';
+const skyImg = new Image(); skyImg.src = 'sky.png';
+const bgImg = new Image(); bgImg.src = 'background.png';
+const seaImg = new Image(); seaImg.src = 'sea.png';
+
+let greenhillPattern = null;
+greenhillImg.onload = () => {
+  greenhillPattern = ctx.createPattern(greenhillImg, 'repeat');
+};
 
 let audioCtx = null;
 let gameStarted = false;
@@ -230,6 +351,24 @@ function playSound(type) {
       gain.gain.exponentialRampToValueAtTime(0.01, now + 0.25);
       osc1.connect(gain); osc2.connect(gain); gain.connect(audioCtx.destination);
       osc1.start(now); osc1.stop(now + 0.08); osc2.start(now + 0.08); osc2.stop(now + 0.25);
+    } else if (type === 'boost') {
+      const osc = audioCtx.createOscillator(), gain = audioCtx.createGain();
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(400, now);
+      osc.frequency.exponentialRampToValueAtTime(1200, now + 0.3);
+      gain.gain.setValueAtTime(0.2, now);
+      gain.gain.exponentialRampToValueAtTime(0.01, now + 0.3);
+      osc.connect(gain); gain.connect(audioCtx.destination);
+      osc.start(now); osc.stop(now + 0.3);
+    } else if (type === 'super') {
+      const osc = audioCtx.createOscillator(), gain = audioCtx.createGain();
+      osc.type = 'triangle';
+      osc.frequency.setValueAtTime(300, now);
+      osc.frequency.exponentialRampToValueAtTime(1800, now + 0.8);
+      gain.gain.setValueAtTime(0.3, now);
+      gain.gain.exponentialRampToValueAtTime(0.01, now + 0.8);
+      osc.connect(gain); gain.connect(audioCtx.destination);
+      osc.start(now); osc.stop(now + 0.8);
     } else if (type === 'jump') {
       const osc = audioCtx.createOscillator(), gain = audioCtx.createGain();
       osc.type = 'square'; osc.frequency.setValueAtTime(150, now);
@@ -237,6 +376,13 @@ function playSound(type) {
       gain.gain.setValueAtTime(0.1, now); gain.gain.exponentialRampToValueAtTime(0.01, now + 0.15);
       osc.connect(gain); gain.connect(audioCtx.destination);
       osc.start(now); osc.stop(now + 0.15);
+    } else if (type === 'hit') {
+      const osc = audioCtx.createOscillator(), gain = audioCtx.createGain();
+      osc.type = 'triangle'; osc.frequency.setValueAtTime(300, now);
+      osc.frequency.exponentialRampToValueAtTime(800, now + 0.12);
+      gain.gain.setValueAtTime(0.2, now); gain.gain.exponentialRampToValueAtTime(0.01, now + 0.12);
+      osc.connect(gain); gain.connect(audioCtx.destination);
+      osc.start(now); osc.stop(now + 0.12);
     } else if (type === 'fall') {
       const osc = audioCtx.createOscillator(), gain = audioCtx.createGain();
       osc.type = 'sawtooth'; osc.frequency.setValueAtTime(400, now);
@@ -248,35 +394,50 @@ function playSound(type) {
   } catch (e) {}
 }
 
-const ACCEL = 1.2;
+const BASE_ACCEL = 1.2;
+const BASE_TOP_SPEED = 9;
 const FRICTION = 0.82;
-const TOP_SPEED = 9;
 const GRAVITY = 0.8;
-const JUMP_FORCE = -16;
+
+// SAUT DYNAMIQUE
+const INITIAL_JUMP_FORCE = -8;
+const JUMP_HOLD_ACCEL = -1.1;
+const MAX_JUMP_HOLD_TIME = 10;
+const CUTOFF_JUMP_VY = -4;
 
 let player = { x: 100, y: 200, width: 38, height: 48, vx: 0, vy: 0, isGrounded: false, facingRight: true };
-let jumpRotationAngle = 0; // Angle pour l'effet de rotation lors du saut
+let isJumping = false;
+let jumpTimer = 0;
+
+let jumpRotationAngle = 0;
 let ringScore = 0;
 let ringAnimAngle = 0;
-let lastCheckpoint = { x: 100, y: 200, platY: 320, distMeters: 0 };
-let nextCpDistance = 100;
-let checkpoints = [];
+let boostTimer = 0;
+let superSonicTimer = 0; 
+let lastSuperThreshold = 0; 
 let rings = [];
+let foes = [];
 let platforms = [];
 let currentLevelY = 320;
 let nextPlatformX = 0;
 let cameraX = 0;
 let maxDistanceReached = 0;
-const inputs = { left: false, right: false };
+let welcomeMsgTimer = 0;
+
+const inputs = { left: false, right: false, up: false, down: false, jumpPressed: false };
 
 function resetGameData() {
   player = { x: 100, y: 200, width: 38, height: 48, vx: 0, vy: 0, isGrounded: false, facingRight: true };
+  isJumping = false;
+  jumpTimer = 0;
   jumpRotationAngle = 0;
   ringScore = 0;
-  lastCheckpoint = { x: 100, y: 200, platY: 320, distMeters: 0 };
-  nextCpDistance = 100;
-  checkpoints = [];
+  boostTimer = 0;
+  superSonicTimer = 0;
+  lastSuperThreshold = 0;
+  welcomeMsgTimer = 210;
   rings = [];
+  foes = [];
   platforms = [{ x: 0, y: 320, width: 700, height: 150 }];
   currentLevelY = 320;
   nextPlatformX = 700;
@@ -285,7 +446,6 @@ function resetGameData() {
   
   distElement.textContent = "0";
   ringDistElement.textContent = "0";
-  cpDistElement.textContent = "0";
 }
 
 function startGame() {
@@ -315,11 +475,30 @@ function triggerGameOver() {
   startOverlay.style.display = 'flex';
 }
 
-function handleJump() {
-  if (gameStarted && player.isGrounded) { 
-    player.vy = JUMP_FORCE; 
+function startJump() {
+  if (!gameStarted) return;
+  inputs.jumpPressed = true;
+
+  if (superSonicTimer > 0) {
+    inputs.up = true;
+  } else if (player.isGrounded) { 
+    player.vy = INITIAL_JUMP_FORCE; 
     player.isGrounded = false; 
+    isJumping = true;
+    jumpTimer = 0;
     playSound('jump'); 
+  }
+}
+
+function endJump() {
+  inputs.jumpPressed = false;
+  inputs.up = false;
+
+  if (isJumping) {
+    isJumping = false;
+    if (player.vy < CUTOFF_JUMP_VY) {
+      player.vy = CUTOFF_JUMP_VY;
+    }
   }
 }
 
@@ -327,12 +506,17 @@ window.addEventListener('keydown', (e) => {
   if (!gameStarted) return;
   if (e.code === 'ArrowRight' || e.code === 'KeyD') inputs.right = true;
   if (e.code === 'ArrowLeft' || e.code === 'KeyQ' || e.code === 'KeyA') inputs.left = true;
-  if (e.code === 'Space' || e.code === 'ArrowUp') handleJump();
+  if (e.code === 'ArrowUp' || e.code === 'KeyW') inputs.up = true;
+  if (e.code === 'ArrowDown' || e.code === 'KeyS') inputs.down = true;
+  if (e.code === 'Space' && !e.repeat) startJump();
 });
 
 window.addEventListener('keyup', (e) => {
   if (e.code === 'ArrowRight' || e.code === 'KeyD') inputs.right = false;
   if (e.code === 'ArrowLeft' || e.code === 'KeyQ' || e.code === 'KeyA') inputs.left = false;
+  if (e.code === 'ArrowUp' || e.code === 'KeyW') inputs.up = false;
+  if (e.code === 'ArrowDown' || e.code === 'KeyS') inputs.down = false;
+  if (e.code === 'Space') endJump();
 });
 
 function setupButton(id, onStart, onEnd) {
@@ -345,7 +529,7 @@ function setupButton(id, onStart, onEnd) {
 
 setupButton('btnLeft', () => inputs.left = true, () => inputs.left = false);
 setupButton('btnRight', () => inputs.right = true, () => inputs.right = false);
-setupButton('btnJump', () => handleJump(), null);
+setupButton('btnJump', () => startJump(), () => endJump());
 
 function generatePlatforms() {
   while (nextPlatformX < player.x + canvas.width + 300) {
@@ -356,22 +540,54 @@ function generatePlatforms() {
     else { width = 160 + Math.random() * 140; gap = 70 + Math.random() * 50; newY = currentLevelY; }
     const platX = nextPlatformX + gap; currentLevelY = newY;
     platforms.push({ x: platX, y: currentLevelY, width: width, height: 200 });
+
     if (Math.random() > 0.3) {
       const numRings = Math.floor(3 + Math.random() * 4); const startX = platX + 40; const isArc = Math.random() > 0.5;
       for (let i = 0; i < numRings; i++) {
         if (startX + i * 28 < platX + width - 30) {
           const arcY = isArc ? Math.sin((i / (numRings - 1)) * Math.PI) * 35 : 0;
-          rings.push({ x: startX + i * 28, y: currentLevelY - 32 - arcY, width: 20, height: 20, collected: false });
+          rings.push({ x: startX + i * 28, y: currentLevelY - 32 - arcY, width: 22, height: 22, collected: false });
         }
       }
     }
-    const platDistMeters = Math.floor(platX / 10);
-    if (platDistMeters >= nextCpDistance) { checkpoints.push({ x: platX + width/2, y: currentLevelY - 40, platY: currentLevelY, width: 10, height: 40, meters: nextCpDistance, reached: false }); nextCpDistance += 100; }
+
+    if (width > 200 && Math.random() > 0.4 && platX > 400) {
+      const isFlying = Math.random() > 0.5;
+      if (isFlying) {
+        foes.push({
+          x: platX + width / 3,
+          y: currentLevelY - 90 - Math.random() * 40,
+          baseY: currentLevelY - 90,
+          width: 36,
+          height: 36,
+          minX: platX + 20,
+          maxX: platX + width - 20,
+          vx: 1.8,
+          isFlying: true,
+          flyAngle: Math.random() * Math.PI * 2,
+          alive: true
+        });
+      } else {
+        foes.push({
+          x: platX + width / 2,
+          y: currentLevelY - 36,
+          baseY: currentLevelY - 36,
+          width: 36,
+          height: 36,
+          minX: platX + 20,
+          maxX: platX + width - 20,
+          vx: 1.5,
+          isFlying: false,
+          alive: true
+        });
+      }
+    }
+
     nextPlatformX = platX + width;
   }
   platforms = platforms.filter(p => p.x + p.width > cameraX - 400); 
-  checkpoints = checkpoints.filter(cp => cp.x > cameraX - 400); 
   rings = rings.filter(r => r.x > cameraX - 400 && !r.collected);
+  foes = foes.filter(f => f.x > cameraX - 400 && f.alive);
 }
 
 function checkCollision(r1, r2) { return r1.x < r2.x + r2.width && r1.x + r1.width > r2.x && r1.y < r2.y + r2.height && r1.y + r1.height > r2.y; }
@@ -386,32 +602,98 @@ function update() {
   lastTime = now;
   if (dt > 3) dt = 1;
 
-  if (inputs.right) { player.vx = Math.min(player.vx + ACCEL * dt, TOP_SPEED); player.facingRight = true; }
-  else if (inputs.left) { player.vx = Math.max(player.vx - ACCEL * dt, -TOP_SPEED); player.facingRight = false; }
+  if (boostTimer > 0) boostTimer -= dt;
+  if (superSonicTimer > 0) superSonicTimer -= dt;
+  if (welcomeMsgTimer > 0) welcomeMsgTimer -= dt;
+
+  const isSuper = superSonicTimer > 0;
+  const currentTopSpeed = isSuper ? BASE_TOP_SPEED * 1.6 : (boostTimer > 0 ? BASE_TOP_SPEED * 1.45 : BASE_TOP_SPEED);
+  const currentAccel = isSuper ? BASE_ACCEL * 1.8 : (boostTimer > 0 ? BASE_ACCEL * 1.5 : BASE_ACCEL);
+
+  if (inputs.right) { player.vx = Math.min(player.vx + currentAccel * dt, currentTopSpeed); player.facingRight = true; }
+  else if (inputs.left) { player.vx = Math.max(player.vx - currentAccel * dt, -currentTopSpeed); player.facingRight = false; }
   else { player.vx *= Math.pow(FRICTION, dt); }
 
-  player.vy += GRAVITY * dt; 
+  if (isSuper) {
+    if (inputs.up) player.vy = -7;
+    else if (inputs.down) player.vy = 7;
+    else player.vy *= 0.85;
+  } else {
+    if (isJumping) {
+      if (inputs.jumpPressed && jumpTimer < MAX_JUMP_HOLD_TIME) {
+        player.vy += JUMP_HOLD_ACCEL * dt;
+        jumpTimer += dt;
+      } else {
+        isJumping = false;
+      }
+    }
+
+    player.vy += GRAVITY * dt; 
+  }
+
   player.x += player.vx * dt; 
   player.y += player.vy * dt;
   
   if (player.x < cameraX) { player.x = cameraX; player.vx = 0; }
+  if (isSuper && player.y < 20) player.y = 20;
 
   player.isGrounded = false;
   for (let plat of platforms) { 
     if (checkCollision(player, plat)) { 
       if (player.vy > 0 && (player.y + player.height - player.vy * dt) <= plat.y + 12) { 
-        player.y = plat.y - player.height; player.vy = 0; player.isGrounded = true; 
+        player.y = plat.y - player.height; 
+        player.vy = 0; 
+        player.isGrounded = true; 
+        isJumping = false;
       } 
     } 
   }
+
+  for (let foe of foes) {
+    if (!foe.alive) continue;
+
+    foe.x += foe.vx * dt;
+    if (foe.x <= foe.minX || foe.x + foe.width >= foe.maxX) {
+      foe.vx *= -1;
+    }
+
+    if (foe.isFlying) {
+      foe.flyAngle += 0.08 * dt;
+      foe.y = foe.baseY + Math.sin(foe.flyAngle) * 20;
+    }
+
+    if (checkCollision(player, foe)) {
+      if (isSuper) {
+        foe.alive = false;
+        playSound('hit');
+      } else if (player.vy > 0 && (player.y + player.height - player.vy * dt) <= foe.y + 15) {
+        foe.alive = false;
+        player.vy = -10;
+        playSound('hit');
+      } else {
+        triggerGameOver();
+        return;
+      }
+    }
+  }
+
   for (let r of rings) { 
     if (!r.collected && checkCollision(player, r)) { 
-      r.collected = true; ringScore++; ringDistElement.textContent = ringScore; playSound('ring'); 
-    } 
-  }
-  for (let cp of checkpoints) { 
-    if (!cp.reached && checkCollision(player, cp)) { 
-      cp.reached = true; lastCheckpoint = { x: cp.x, y: cp.y, platY: cp.platY, distMeters: cp.meters }; cpDistElement.textContent = cp.meters; 
+      r.collected = true; 
+      ringScore++; 
+      ringDistElement.textContent = ringScore; 
+      
+      const currentThreshold = Math.floor(ringScore / 100);
+      if (currentThreshold > lastSuperThreshold) {
+        lastSuperThreshold = currentThreshold;
+        superSonicTimer = 600;
+        playSound('super');
+      } else if (ringScore % 10 === 0) {
+        boostTimer = 300;
+        playSound('boost');
+      } else {
+        playSound('ring'); 
+      }
     } 
   }
   
@@ -420,15 +702,15 @@ function update() {
     return;
   }
 
-  // CALCUL DE LA ROTATION DANS LES AIRS
-  if (!player.isGrounded) {
-    const dir = player.facingRight ? 1 : -1;
-    jumpRotationAngle += 0.25 * dir * dt;
+  if (!player.isGrounded && !isSuper) {
+    const rotationSpeed = 0.25;
+    const directionMultiplier = player.facingRight ? 1 : -1;
+    jumpRotationAngle += rotationSpeed * directionMultiplier * dt;
   } else {
     jumpRotationAngle = 0;
   }
 
-  ringAnimAngle += 0.1 * dt; 
+  ringAnimAngle += 0.12 * dt; 
   generatePlatforms();
   cameraX = Math.max(0, player.x - 200); 
   
@@ -440,27 +722,39 @@ function update() {
 function drawPlayer() {
   ctx.save();
 
-  // Positionnement au centre de Sonic pour gérer proprement la rotation
   const centerX = player.x + player.width / 2;
   const centerY = player.y + player.height / 2;
   ctx.translate(centerX, centerY);
 
-  if (!player.isGrounded) {
-    // ROTATION DU SAUT (SONIC BALL)
+  const isSuper = superSonicTimer > 0;
+
+  if (isSuper) {
+    ctx.shadowColor = '#f1c40f';
+    ctx.shadowBlur = 25;
+  } else if (boostTimer > 0) {
+    ctx.shadowColor = '#3498db';
+    ctx.shadowBlur = 15;
+  }
+
+  if (isSuper) {
+    if (!player.facingRight) ctx.scale(-1, 1);
+    
+    if (superSonicImg.complete && superSonicImg.naturalWidth !== 0) {
+      ctx.drawImage(superSonicImg, -player.width / 2 - 5, -player.height / 2 - 5, player.width + 10, player.height + 10);
+    } else {
+      ctx.fillStyle = '#f1c40f';
+      ctx.fillRect(-player.width / 2, -player.height / 2, player.width, player.height);
+    }
+  } else if (!player.isGrounded) {
     ctx.rotate(jumpRotationAngle);
     if (sonicJump.complete && sonicJump.naturalWidth !== 0) {
       ctx.drawImage(sonicJump, -player.width / 2, -player.height / 2, player.width, player.height);
     } else {
       ctx.fillStyle = '#e74c3c';
-      ctx.beginPath();
-      ctx.arc(0, 0, player.width / 2, 0, Math.PI * 2);
-      ctx.fill();
+      ctx.beginPath(); ctx.arc(0, 0, player.width / 2, 0, Math.PI * 2); ctx.fill();
     }
   } else {
-    // ORIENTATION GAUCHE / DROITE AU SOL
-    if (!player.facingRight) {
-      ctx.scale(-1, 1);
-    }
+    if (!player.facingRight) ctx.scale(-1, 1);
 
     if (Math.abs(player.vx) > 0.3) {
       if (sonicRun.complete && sonicRun.naturalWidth !== 0) {
@@ -472,8 +766,7 @@ function drawPlayer() {
       if (sonicIdle.complete && sonicIdle.naturalWidth !== 0) {
         ctx.drawImage(sonicIdle, -player.width / 2, -player.height / 2, player.width, player.height);
       } else {
-        ctx.fillStyle = '#3498db';
-        ctx.fillRect(-player.width / 2, -player.height / 2, player.width, player.height);
+        ctx.fillStyle = '#3498db'; ctx.fillRect(-player.width / 2, -player.height / 2, player.width, player.height);
       }
     }
   }
@@ -482,62 +775,133 @@ function drawPlayer() {
 }
 
 function drawBackground() {
-  const sky = ctx.createLinearGradient(0, 0, 0, canvas.height); 
-  sky.addColorStop(0, '#0f1423'); sky.addColorStop(0.7, '#1d2744'); sky.addColorStop(1, '#3a2e39'); 
-  ctx.fillStyle = sky; ctx.fillRect(0, 0, canvas.width, canvas.height);
-  
-  ctx.fillStyle = '#161b2e'; ctx.beginPath(); 
-  let mOfs = (cameraX * 0.1) % 300; 
-  for (let x = -300; x < canvas.width + 300; x += 150) { 
-    ctx.lineTo(x - mOfs, 240); ctx.lineTo(x + 75 - mOfs, 160); ctx.lineTo(x + 150 - mOfs, 240); 
-  } 
-  ctx.lineTo(canvas.width, canvas.height); ctx.lineTo(0, canvas.height); ctx.fill();
+  if (skyImg.complete && skyImg.naturalWidth !== 0) {
+    ctx.drawImage(skyImg, 0, 0, canvas.width, canvas.height);
+  } else {
+    const sky = ctx.createLinearGradient(0, 0, 0, canvas.height); 
+    sky.addColorStop(0, '#0f1423'); sky.addColorStop(0.7, '#1d2744'); sky.addColorStop(1, '#3a2e39'); 
+    ctx.fillStyle = sky; ctx.fillRect(0, 0, canvas.width, canvas.height);
+  }
 
-  ctx.fillStyle = '#212a45'; ctx.beginPath(); 
-  let hOfs = (cameraX * 0.25) % 200; 
-  for (let x = -200; x < canvas.width + 200; x += 100) { 
-    ctx.lineTo(x - hOfs, 280); ctx.lineTo(x + 50 - hOfs, 220); ctx.lineTo(x + 100 - hOfs, 280); 
-  } 
-  ctx.lineTo(canvas.width, canvas.height); ctx.lineTo(0, canvas.height); ctx.fill();
+  if (bgImg.complete && bgImg.naturalWidth !== 0) {
+    const bgWidth = bgImg.width;
+    let bgX = -(cameraX * 0.1) % bgWidth;
+    for (let x = bgX - bgWidth; x < canvas.width + bgWidth; x += bgWidth) {
+      ctx.drawImage(bgImg, x, canvas.height - bgImg.height);
+    }
+  }
+
+  if (seaImg.complete && seaImg.naturalWidth !== 0) {
+    const seaWidth = seaImg.width;
+    let seaX = -(cameraX * 0.3) % seaWidth;
+    for (let x = seaX - seaWidth; x < canvas.width + seaWidth; x += seaWidth) {
+      ctx.drawImage(seaImg, x, canvas.height - seaImg.height);
+    }
+  }
+}
+
+function drawWelcomeMessage() {
+  if (welcomeMsgTimer <= 0) return;
+
+  ctx.save();
+  let alpha = 1;
+  if (welcomeMsgTimer < 60) {
+    alpha = welcomeMsgTimer / 60;
+  }
+
+  ctx.globalAlpha = alpha;
+  ctx.font = '900 28px sans-serif';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+
+  const text = "Get 100 Rings for a Surprise !";
+  const x = canvas.width / 2;
+  const y = 90;
+
+  ctx.strokeStyle = 'black';
+  ctx.lineWidth = 6;
+  ctx.strokeText(text, x, y);
+
+  ctx.fillStyle = '#f1c40f';
+  ctx.fillText(text, x, y);
+
+  ctx.restore();
 }
 
 function draw() {
   ctx.clearRect(0, 0, canvas.width, canvas.height); 
   ctx.imageSmoothingEnabled = false;
+
   drawBackground();
 
   ctx.save(); 
   ctx.translate(-cameraX, 0);
 
+  // Plateformes
   for (let plat of platforms) {
-    ctx.fillStyle = '#795548'; ctx.fillRect(plat.x, plat.y, plat.width, plat.height);
-    ctx.fillStyle = '#5d4037'; ctx.fillRect(plat.x, plat.y + 12, plat.width, plat.height);
-    ctx.fillStyle = '#2ecc71'; ctx.fillRect(plat.x, plat.y, plat.width, 8);
-    ctx.fillStyle = '#27ae60'; ctx.fillRect(plat.x, plat.y + 8, plat.width, 4);
+    if (greenhillImg.complete && greenhillImg.naturalWidth !== 0) {
+      ctx.save();
+      ctx.translate(plat.x, plat.y);
+      if (!greenhillPattern) {
+        greenhillPattern = ctx.createPattern(greenhillImg, 'repeat');
+      }
+      ctx.fillStyle = greenhillPattern;
+      ctx.fillRect(0, 0, plat.width, plat.height);
+      ctx.restore();
+    } else {
+      ctx.fillStyle = '#795548'; ctx.fillRect(plat.x, plat.y, plat.width, plat.height);
+      ctx.fillStyle = '#5d4037'; ctx.fillRect(plat.x, plat.y + 12, plat.width, plat.height);
+      ctx.fillStyle = '#2ecc71'; ctx.fillRect(plat.x, plat.y, plat.width, 8);
+      ctx.fillStyle = '#27ae60'; ctx.fillRect(plat.x, plat.y + 8, plat.width, 4);
+    }
   }
 
-  for (let cp of checkpoints) {
-    ctx.fillStyle = cp.reached ? '#2ecc71' : '#e74c3c';
-    ctx.beginPath(); ctx.moveTo(cp.x + 4, cp.y); ctx.lineTo(cp.x + 24, cp.y + 10); ctx.lineTo(cp.x + 4, cp.y + 20); ctx.fill();
-    ctx.fillStyle = '#bdc3c7'; ctx.fillRect(cp.x, cp.y, 4, cp.height);
+  // Ennemis
+  for (let foe of foes) {
+    if (foe.alive) {
+      ctx.save();
+      ctx.translate(foe.x + foe.width / 2, foe.y + foe.height / 2);
+      if (foe.vx < 0) ctx.scale(-1, 1);
+      
+      if (foeSprite.complete && foeSprite.naturalWidth !== 0) {
+        ctx.drawImage(foeSprite, -foe.width / 2, -foe.height / 2, foe.width, foe.height);
+      } else {
+        ctx.fillStyle = foe.isFlying ? '#9b59b6' : '#e74c3c';
+        ctx.fillRect(-foe.width / 2, -foe.height / 2, foe.width, foe.height);
+      }
+      ctx.restore();
+    }
   }
 
+  // Rings
   for (let r of rings) {
     if (!r.collected) {
+      ctx.save();
+      const rx = r.x + r.width / 2;
+      const ry = r.y + r.height / 2;
+      
+      const scaleX = Math.cos(ringAnimAngle);
+      
+      ctx.translate(rx, ry);
+      ctx.scale(scaleX, 1);
+
       if (ringSprite.complete && ringSprite.naturalWidth !== 0) {
-        ctx.save();
-        ctx.translate(r.x + r.width / 2, r.y + r.height / 2);
-        ctx.scale(Math.cos(ringAnimAngle), 1);
         ctx.drawImage(ringSprite, -r.width / 2, -r.height / 2, r.width, r.height);
-        ctx.restore();
       } else {
-        ctx.fillStyle = '#f1c40f'; ctx.fillRect(r.x, r.y, r.width, r.height);
+        ctx.strokeStyle = '#f1c40f';
+        ctx.lineWidth = 3;
+        ctx.beginPath();
+        ctx.arc(0, 0, r.width / 2 - 2, 0, Math.PI * 2);
+        ctx.stroke();
       }
+      ctx.restore();
     }
   }
 
   drawPlayer();
   ctx.restore();
+
+  drawWelcomeMessage();
 }
 
 function gameLoop() { 
