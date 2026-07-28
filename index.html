@@ -41,24 +41,61 @@
     #scoreBoard { font-size: 18px; font-weight: bold; margin-bottom: 10px; display: flex; gap: 20px; background: rgba(0,0,0,0.4); padding: 8px 16px; border-radius: 20px; }
     .ring-count { color: #f1c40f; }
 
+    /* Overlay Menu & Game Over */
     #startOverlay {
       position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
       background: rgba(15, 20, 35, 0.95);
       display: flex; flex-direction: column; justify-content: center; align-items: center;
       z-index: 999; gap: 15px;
     }
+    .main-title { margin: 0; color: #f1c40f; font-size: 32px; text-transform: uppercase; }
+    .game-over-text { color: #e74c3c; font-size: 18px; margin: -5px 0 5px 0; font-weight: bold; }
+    .last-score-badge { background: rgba(255, 255, 255, 0.15); padding: 6px 16px; border-radius: 15px; font-size: 16px; }
+
     #startButton {
       padding: 15px 40px; font-size: 22px; font-weight: bold; color: white;
       background: #e74c3c; border: none; border-radius: 30px; cursor: pointer;
       box-shadow: 0 4px 15px rgba(231, 76, 60, 0.5);
+      transition: transform 0.1s ease;
     }
+    #startButton:active { transform: scale(0.95); }
+
+    /* Tableau des High Scores */
+    .leaderboard-box {
+      background: rgba(255, 255, 255, 0.1);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      border-radius: 12px;
+      padding: 15px 25px;
+      width: 320px;
+      max-height: 250px;
+      overflow-y: auto;
+      text-align: center;
+    }
+    .leaderboard-box h3 { margin: 0 0 10px 0; color: #f1c40f; }
+    .leaderboard-list { list-style: none; padding: 0; margin: 0; font-size: 14px; text-align: left; }
+    .leaderboard-list li { display: flex; justify-content: space-between; padding: 4px 0; border-bottom: 1px solid rgba(255,255,255,0.1); }
+    .leaderboard-list li span.rank { color: #e74c3c; font-weight: bold; width: 25px; }
   </style>
+
+  <!-- SDKs FIREBASE (VERSION COMPAT) -->
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
 </head>
 <body>
 
+  <!-- ÉCRAN D'ACCUEIL / GAME OVER -->
   <div id="startOverlay">
-    <h1 style="margin: 0; color: #f1c40f;">Sonic Runner</h1>
-    <p style="margin: 0; color: #bdc3c7;">Appuie pour jouer !</p>
+    <h1 class="main-title" id="menuTitle">Sonic Runner</h1>
+    <div id="gameOverMsg" class="game-over-text" style="display: none;">GAME OVER</div>
+    <div id="lastScoreBox" class="last-score-badge" style="display: none;">Score : <span id="finalScoreVal">0</span>m</div>
+
+    <div class="leaderboard-box">
+      <h3>🏆 TOP 10 MONDIAL</h3>
+      <ol class="leaderboard-list" id="leaderboardList">
+        <li>Connexion aux scores...</li>
+      </ol>
+    </div>
+
     <button id="startButton">JOUER 🔊</button>
   </div>
 
@@ -80,21 +117,93 @@
   </div>
 
 <script>
+// --- CONFIGURATION FIREBASE AVEC TON SERVEUR EUROPÉEN ---
+const firebaseConfig = {
+  apiKey: "AIzaSyAc_ayd7Ij-ED_nCORcicOZvCMg_TzAMPs",
+  authDomain: "sonic-runner-bc2f2.firebaseapp.com",
+  projectId: "sonic-runner-bc2f2",
+  storageBucket: "sonic-runner-bc2f2.firebasestorage.app",
+  messagingSenderId: "311207510980",
+  appId: "1:311207510980:web:9a01cdf8ded32c87efda91",
+  databaseURL: "https://sonic-runner-bc2f2-default-rtdb.europe-west1.firebasedatabase.app/"
+};
+
+firebase.initializeApp(firebaseConfig);
+const db = firebase.database();
+
+const leaderboardList = document.getElementById('leaderboardList');
+let playerName = localStorage.getItem('sonic_player_name') || '';
+
+// ÉCOUTER LE TOP 10 EN TEMPS RÉEL
+function listenToHighScores() {
+  db.ref('scores').orderByChild('score').limitToLast(10).on('value', (snapshot) => {
+    const scores = [];
+    snapshot.forEach((childSnapshot) => {
+      scores.push(childSnapshot.val());
+    });
+    
+    scores.reverse();
+
+    if (scores.length === 0) {
+      leaderboardList.innerHTML = "<li>Aucun score enregistré.</li>";
+      return;
+    }
+
+    leaderboardList.innerHTML = scores.map((entry, index) => `
+      <li>
+        <span class="rank">#${index + 1}</span>
+        <span>${entry.name}</span>
+        <strong>${entry.score}m</strong>
+      </li>
+    `).join('');
+  }, (error) => {
+    leaderboardList.innerHTML = "<li>Erreur : vérifiez l'onglet Règles dans Firebase !</li>";
+  });
+}
+
+// ENVOYER UN NOUVEAU SCORE
+function submitScore(score) {
+  if (score < 10) return;
+
+  if (!playerName) {
+    playerName = prompt("Nouveau record ! Entre ton pseudo :", "SonicPlayer");
+    if (playerName) {
+      playerName = playerName.replace(/[^a-zA-Z0-9]/g, "").substring(0, 12);
+      localStorage.setItem('sonic_player_name', playerName);
+    } else {
+      playerName = "Anonyme";
+    }
+  }
+
+  db.ref('scores').push({
+    name: playerName,
+    score: score,
+    timestamp: Date.now()
+  });
+}
+
+listenToHighScores();
+
+// --- LOGIQUE ET CANVAS DU JEU ---
 const canvas = document.getElementById('gameCanvas');
 const ctx = canvas.getContext('2d');
 const distElement = document.getElementById('dist');
 const cpDistElement = document.getElementById('cpDist');
 const ringDistElement = document.getElementById('ringDist');
+
+// Éléments du menu / Game Over
 const startOverlay = document.getElementById('startOverlay');
 const startButton = document.getElementById('startButton');
+const menuTitle = document.getElementById('menuTitle');
+const gameOverMsg = document.getElementById('gameOverMsg');
+const lastScoreBox = document.getElementById('lastScoreBox');
+const finalScoreVal = document.getElementById('finalScoreVal');
 
-// --- CHARGEMENT DES IMAGES ---
 const sonicIdle = new Image(); sonicIdle.src = 'Sonic.png';
 const sonicRun = new Image(); sonicRun.src = 'Sonic Run.png';
 const sonicJump = new Image(); sonicJump.src = 'Sonic-jump.png';
 const ringSprite = new Image(); ringSprite.src = 'ring.gif';
 
-// --- SYSTÈME BRUITAGES 8-BIT ---
 let audioCtx = null;
 let gameStarted = false;
 
@@ -139,9 +248,48 @@ function playSound(type) {
   } catch (e) {}
 }
 
+const ACCEL = 1.2;
+const FRICTION = 0.82;
+const TOP_SPEED = 9;
+const GRAVITY = 0.8;
+const JUMP_FORCE = -16;
+
+let player = { x: 100, y: 200, width: 38, height: 48, vx: 0, vy: 0, isGrounded: false, facingRight: true };
+let ringScore = 0;
+let ringAnimAngle = 0;
+let lastCheckpoint = { x: 100, y: 200, platY: 320, distMeters: 0 };
+let nextCpDistance = 100;
+let checkpoints = [];
+let rings = [];
+let platforms = [];
+let currentLevelY = 320;
+let nextPlatformX = 0;
+let cameraX = 0;
+let maxDistanceReached = 0;
+const inputs = { left: false, right: false };
+
+function resetGameData() {
+  player = { x: 100, y: 200, width: 38, height: 48, vx: 0, vy: 0, isGrounded: false, facingRight: true };
+  ringScore = 0;
+  lastCheckpoint = { x: 100, y: 200, platY: 320, distMeters: 0 };
+  nextCpDistance = 100;
+  checkpoints = [];
+  rings = [];
+  platforms = [{ x: 0, y: 320, width: 700, height: 150 }];
+  currentLevelY = 320;
+  nextPlatformX = 700;
+  cameraX = 0;
+  maxDistanceReached = 0;
+  
+  distElement.textContent = "0";
+  ringDistElement.textContent = "0";
+  cpDistElement.textContent = "0";
+}
+
 function startGame() {
   initAudio();
   if (!gameStarted) {
+    resetGameData();
     gameStarted = true;
     startOverlay.style.display = 'none';
     playSound('jump');
@@ -149,37 +297,24 @@ function startGame() {
 }
 
 startButton.onclick = startGame;
-startButton.ontouchstart = startGame;
 
-// --- CONSTANTES DE PHYSIQUE (AJUSTÉES AVEC TEMPS MULTIPLIER) ---
-const ACCEL = 1.2;
-const FRICTION = 0.82;
-const TOP_SPEED = 9;
-const GRAVITY = 0.8;
-const JUMP_FORCE = -16;
-
-const player = {
-  x: 100, y: 200,
-  width: 38, height: 48,
-  vx: 0, vy: 0,
-  isGrounded: false, facingRight: true
-};
-
-let ringScore = 0;
-let ringAnimAngle = 0;
-let lastCheckpoint = { x: 100, y: 200, platY: 320, distMeters: 0 };
-let nextCpDistance = 100;
-let checkpoints = [];
-let rings = [];
-let platforms = [{ x: 0, y: 320, width: 700, height: 150 }];
-let currentLevelY = 320;
-let nextPlatformX = 700;
-let cameraX = 0;
-const inputs = { left: false, right: false };
+function triggerGameOver() {
+  playSound('fall');
+  gameStarted = false;
+  
+  submitScore(maxDistanceReached);
+  
+  menuTitle.textContent = "GAME OVER";
+  gameOverMsg.style.display = 'block';
+  finalScoreVal.textContent = maxDistanceReached;
+  lastScoreBox.style.display = 'block';
+  startButton.textContent = "REJOUER 🔄";
+  
+  startOverlay.style.display = 'flex';
+}
 
 function handleJump() {
-  startGame();
-  if (player.isGrounded) { 
+  if (gameStarted && player.isGrounded) { 
     player.vy = JUMP_FORCE; 
     player.isGrounded = false; 
     playSound('jump'); 
@@ -187,7 +322,7 @@ function handleJump() {
 }
 
 window.addEventListener('keydown', (e) => {
-  startGame();
+  if (!gameStarted) return;
   if (e.code === 'ArrowRight' || e.code === 'KeyD') inputs.right = true;
   if (e.code === 'ArrowLeft' || e.code === 'KeyQ' || e.code === 'KeyA') inputs.left = true;
   if (e.code === 'Space' || e.code === 'ArrowUp') handleJump();
@@ -201,7 +336,7 @@ window.addEventListener('keyup', (e) => {
 function setupButton(id, onStart, onEnd) {
   const btn = document.getElementById(id);
   if (!btn) return;
-  btn.addEventListener('pointerdown', (e) => { e.preventDefault(); startGame(); onStart(); });
+  btn.addEventListener('pointerdown', (e) => { e.preventDefault(); onStart(); });
   btn.addEventListener('pointerup', (e) => { e.preventDefault(); if (onEnd) onEnd(); });
   btn.addEventListener('pointerleave', (e) => { e.preventDefault(); if (onEnd) onEnd(); });
 }
@@ -239,29 +374,15 @@ function generatePlatforms() {
 
 function checkCollision(r1, r2) { return r1.x < r2.x + r2.width && r1.x + r1.width > r2.x && r1.y < r2.y + r2.height && r1.y + r1.height > r2.y; }
 
-function respawnPlayer() {
-  player.x = lastCheckpoint.x;
-  player.y = lastCheckpoint.platY - player.height - 10;
-  player.vx = 0; player.vy = 0; player.isGrounded = false;
-  const safeW = 500; const safeX = lastCheckpoint.x - 100;
-  platforms = platforms.filter(p => p.x + p.width < safeX || p.x > safeX + safeW);
-  platforms.push({ x: safeX, y: lastCheckpoint.platY, width: safeW, height: 200 });
-  currentLevelY = lastCheckpoint.platY; nextPlatformX = safeX + safeW;
-  cameraX = Math.max(0, player.x - 200);
-  generatePlatforms();
-}
-
-// --- MISE À JOUR ADAPTATIVE EN TEMPS RÉEL (DELTA TIME) ---
 let lastTime = performance.now();
 
 function update() {
   if (!gameStarted) return;
 
   const now = performance.now();
-  // Calcul du temps écoulé (normalisé sur 60 FPS = 1.0)
   let dt = (now - lastTime) / (1000 / 60);
   lastTime = now;
-  if (dt > 3) dt = 1; // Sécurité si le téléphone freeze un court instant
+  if (dt > 3) dt = 1;
 
   if (inputs.right) { player.vx = Math.min(player.vx + ACCEL * dt, TOP_SPEED); player.facingRight = true; }
   else if (inputs.left) { player.vx = Math.max(player.vx - ACCEL * dt, -TOP_SPEED); player.facingRight = false; }
@@ -292,12 +413,18 @@ function update() {
     } 
   }
   
-  if (player.y > canvas.height + 100) { playSound('fall'); respawnPlayer(); }
+  if (player.y > canvas.height + 100) { 
+    triggerGameOver(); 
+    return;
+  }
 
   ringAnimAngle += 0.1 * dt; 
   generatePlatforms();
   cameraX = Math.max(0, player.x - 200); 
-  distElement.textContent = Math.floor(player.x / 10);
+  
+  const currentDist = Math.floor(player.x / 10);
+  distElement.textContent = currentDist;
+  if (currentDist > maxDistanceReached) maxDistanceReached = currentDist;
 }
 
 function drawPlayer() {
